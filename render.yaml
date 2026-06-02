@@ -1,0 +1,57 @@
+# render.yaml — Render.com deploy configuration for SQLI Sentinel Backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: sqli-sentinel-backend
+    runtime: python
+    region: frankfurt  # Yaqin region
+    plan: free         # Bepul tier ($0/oy)
+    
+    buildCommand: pip install -r backend_v2/requirements.txt
+    startCommand: python -m uvicorn backend_v2.app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    
+    # Health check
+    healthCheckPath: /api/health
+    
+    # Environment variables (Render dashboard dan o'rnatiladi)
+    envVars:
+      - key: SQLI_SENTINEL_APP_NAME
+        value: SQLI Sentinel Backend
+      - key: SQLI_SENTINEL_APP_VERSION
+        value: "2.0.0"
+      - key: SQLI_SENTINEL_ENV
+        value: production
+      - key: SQLI_SENTINEL_LOG_LEVEL
+        value: INFO
+      - key: SQLI_SENTINEL_SESSION_TTL_HOURS
+        value: "24"
+      - key: SQLI_SENTINEL_PBKDF2_ITERATIONS
+        value: "210000"
+      - key: SQLI_SENTINEL_RATE_LIMIT_PER_MINUTE
+        value: "120"
+      - key: SQLI_SENTINEL_REQUEST_SIZE_LIMIT_BYTES
+        value: "262144"
+      - key: SQLI_SENTINEL_DB_PATH
+        value: /opt/render/project/data/sqli_sentinel.db
+      - key: SQLI_SENTINEL_ENABLE_METRICS
+        value: "true"
+      - key: SQLI_SENTINEL_MAX_REPORT_EXPORT_ROWS
+        value: "5000"
+      - key: SQLI_SENTINEL_AI_TIMEOUT_SECONDS
+        value: "20"
+      - key: SQLI_SENTINEL_SEED_DEFAULT_ADMIN
+        value: "true"
+      - key: SQLI_SENTINEL_DEFAULT_ADMIN_EMAIL
+        value: admin@sqli-sentinel.local
+      - key: SQLI_SENTINEL_DEFAULT_ADMIN_PASSWORD
+        value: Admin123!
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      # Quyidagi secret qiymatlarni Render dashboard da qo'shing:
+      # - key: SQLI_SENTINEL_SECRET
+      #   value: <strong-random-secret>
+      # - key: SQLI_SENTINEL_ALLOWED_ORIGINS
+      #   value: https://your-vercel-app.vercel.app
+      # - key: GEMINI_API_KEY
+      #   value: <your-gemini-api-key>  (ixtiyoriy)

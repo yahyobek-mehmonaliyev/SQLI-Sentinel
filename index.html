@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tender Bozori Statistikasi - TenderHelper AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 1. THE SETUP */
+        * {
+            box-sizing: border-box;
+        }
+
+        p {
+            margin: 0;
+            margin-bottom: 15px;
+        }
+
+        body {
+            background-color: #020617;
+            display: grid;
+            gap: 20px;
+            grid-template-columns: 1fr;
+            margin: 0;
+            min-height: 100vh;
+            padding: 20px 0;
+            place-items: center;
+            font-family: 'Inter', sans-serif;
+        }
+
+       .slide-container {
+            align-items: center;
+            background-color: #0F172A;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            height: 720px;
+            justify-content: flex-start;
+            overflow: hidden;
+            padding: 40px 60px;
+            position: relative;
+            width: 1280px;
+            color: #F8FAFC;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.04) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
+        }
+
+        /* 2. CONSISTENT TYPOGRAPHY */
+       .slide-container h2 {
+            color: #F8FAFC;
+            font-weight: 700;
+            margin: 0;
+        }
+
+       .slide-container.slide-title {
+            font-size: 40px;
+            margin-bottom: 30px;
+            text-align: left;
+            width: 100%;
+            color: #F8FAFC;
+        }
+
+       .slide-title span.hl-blue { color: #3B82F6; }
+
+       .slide-container.content-area {
+            align-items: center;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            justify-content: flex-start;
+            width: 100%;
+        }
+
+        /* 3. STATS GRID (4 Columns) */
+       .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 30px;
+        }
+
+       .stat-card {
+            background-color: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+       .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+       .stat-icon {
+            align-items: center;
+            background-color: #0F172A;
+            border-radius: 50%;
+            display: flex;
+            font-size: 26px;
+            height: 60px;
+            justify-content: center;
+            margin-bottom: 20px;
+            min-width: 60px;
+        }
+
+       .stat-number {
+            font-size: 34px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+       .stat-label {
+            font-size: 15px;
+            color: #CBD5E1;
+            line-height: 1.4;
+        }
+
+       .cite-tag {
+            font-size: 11px;
+            color: #64748B;
+            vertical-align: super;
+        }
+
+        /* Card Colors */
+       .card-blue { border-top: 4px solid #3B82F6; }
+       .card-blue.stat-icon { color: #3B82F6; border: 2px solid #3B82F6; }
+       .card-blue.stat-number { color: #3B82F6; }
+
+       .card-green { border-top: 4px solid #10B981; }
+       .card-green.stat-icon { color: #10B981; border: 2px solid #10B981; }
+       .card-green.stat-number { color: #10B981; }
+
+       .card-red { border-top: 4px solid #EF4444; }
+       .card-red.stat-icon { color: #EF4444; border: 2px solid #EF4444; }
+       .card-red.stat-number { color: #EF4444; }
+
+       .card-yellow { border-top: 4px solid #F59E0B; }
+       .card-yellow.stat-icon { color: #F59E0B; border: 2px solid #F59E0B; }
+       .card-yellow.stat-number { color: #F59E0B; }
+
+        /* 4. HISTOGRAM SECTION */
+       .histogram-section {
+            background-color: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 30px;
+            width: 100%;
+            max-width: 1200px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+       .histogram-title {
+            text-align: center;
+            color: #F8FAFC;
+            font-size: 22px;
+            margin-bottom: 35px;
+            font-weight: 600;
+        }
+
+       .bar-chart-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            flex-grow: 1;
+            width: 100%;
+            border-bottom: 2px solid #475569;
+            padding-bottom: 10px;
+        }
+
+       .bar-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 15%;
+        }
+
+       .bar {
+            width: 80px;
+            border-radius: 6px 6px 0 0;
+            display: flex;
+            justify-content: center;
+        }
+
+       .bar.blue { background: linear-gradient(to top, #2563EB, #60A5FA); box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4); }
+       .bar.green { background: linear-gradient(to top, #059669, #34D399); box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4); }
+       .bar.purple { background: linear-gradient(to top, #7C3AED, #A78BFA); box-shadow: 0 4px 10px rgba(139, 92, 246, 0.4); }
+       .bar.yellow { background: linear-gradient(to top, #D97706, #FBBF24); box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4); }
+
+       .bar-value {
+            margin-top: -30px;
+            color: #F8FAFC;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+       .bar-label {
+            margin-top: 15px;
+            color: #CBD5E1;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="slide-container" id="slide-stats">
+        <h2 class="slide-title">Tender Bozori: <span class="hl-blue">Faktlar va Raqamlar (2024-2025)</span></h2>
+        
+        <div class="content-area">
+            
+            <div class="stats-grid">
+                <div class="stat-card card-blue">
+                    <div class="stat-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                    <div class="stat-number">248.6 Trln</div>
+                    <div class="stat-label">2024-yilda jami amalga oshirilgan davlat xaridlari hajmi.<span class="cite-tag"></span></div>
+                </div>
+
+                <div class="stat-card card-green">
+                    <div class="stat-icon"><i class="fa-solid fa-piggy-bank"></i></div>
+                    <div class="stat-number">13.9 Trln</div>
+                    <div class="stat-label">Raqobatli xaridlar o'tkazilishi natijasida tejalgan mablag'lar.<span class="cite-tag"></span></div>
+                </div>
+
+                <div class="stat-card card-red">
+                    <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="stat-number">28 304 ta</div>
+                    <div class="stat-label">18.8 trln so'mlik xaridlarda aniqlangan raqobatga zid harakatlar.<span class="cite-tag">[1]</span></div>
+                </div>
+
+                <div class="stat-card card-yellow">
+                    <div class="stat-icon"><i class="fa-solid fa-user-xmark"></i></div>
+                    <div class="stat-number">801 ta</div>
+                    <div class="stat-label">Savdolar ishtirokchilarini asossiz ravishda chetlashtirish holatlari.<span class="cite-tag">[1]</span></div>
+                </div>
+            </div>
+
+            <div class="histogram-section">
+                <div class="histogram-title">Hududlar kesimida davlat xaridlarining taqsimlanishi (Trln so'm)<span class="cite-tag"></span></div>
+                
+                <div class="bar-chart-container">
+                    <div class="bar-wrapper">
+                        <div class="bar blue" style="height: 150px;">
+                            <div class="bar-value">100.8</div>
+                        </div>
+                        <div class="bar-label">Toshkent sh.</div>
+                    </div>
+
+                    <div class="bar-wrapper">
+                        <div class="bar green" style="height: 62px;">
+                            <div class="bar-value">41.9</div>
+                        </div>
+                        <div class="bar-label">Navoiy vil.</div>
+                    </div>
+
+                    <div class="bar-wrapper">
+                        <div class="bar purple" style="height: 43px;">
+                            <div class="bar-value">29.2</div>
+                        </div>
+                        <div class="bar-label">Toshkent vil.</div>
+                    </div>
+
+                    <div class="bar-wrapper">
+                        <div class="bar yellow" style="height: 38px;">
+                            <div class="bar-value">25.7</div>
+                        </div>
+                        <div class="bar-label">Andijon vil.</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

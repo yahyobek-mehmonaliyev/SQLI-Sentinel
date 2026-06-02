@@ -1,0 +1,502 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* SQLI Sentinel - Premium Enterprise Cybersecurity Dark Theme */
+:root {
+  /* Light mode defaults */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  /* === CORE PALETTE === */
+  /* Deep navy primary background for maximum contrast */
+  --background: #0a0e27;
+  --foreground: #e8ecf1;
+  
+  /* === SURFACE HIERARCHY === */
+  /* Elevated dark surfaces with strategic depth */
+  --card: #141829;
+  --card-foreground: #e8ecf1;
+  --popover: #1a1f35;
+  --popover-foreground: #e8ecf1;
+  --muted: #2d3a52;
+  --muted-foreground: #8b92a9;
+  
+  /* === ACCENT COLORS === */
+  /* Neon cyan - primary action & focus states */
+  --primary: #00d9ff;
+  --primary-foreground: #0a0e27;
+  
+  /* Neon green - success & highlights */
+  --secondary: #06f59c;
+  --secondary-foreground: #0a0e27;
+  
+  /* Cyan accent variant */
+  --accent: #00d9ff;
+  --accent-foreground: #0a0e27;
+  
+  /* === SEVERITY & STATUS COLORS === */
+  /* Critical red for high-risk findings */
+  --critical: #ef4444;
+  --critical-bg: #7f1d1d;
+  --critical-border: #dc2626;
+  
+  /* High orange for significant issues */
+  --high: #f97316;
+  --high-bg: #7c2d12;
+  --high-border: #ea580c;
+  
+  /* Medium yellow for moderate findings */
+  --medium: #eab308;
+  --medium-bg: #713f12;
+  --medium-border: #d97706;
+  
+  /* Low green for minor items */
+  --low: #22c55e;
+  --low-bg: #164e63;
+  --low-border: #16a34a;
+  
+  /* === STATUS INDICATORS === */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+  --running: #00d9ff;
+  
+  /* === STRUCTURAL ELEMENTS === */
+  --border: #2d3a52;
+  --border-subtle: #1f2937;
+  --border-focus: #00d9ff;
+  --input: #1a1f35;
+  --input-border: #2d3a52;
+  --ring: #00d9ff;
+  
+  /* === SIDEBAR STYLING === */
+  --sidebar: #0a0e27;
+  --sidebar-foreground: #e8ecf1;
+  --sidebar-primary: #00d9ff;
+  --sidebar-primary-foreground: #0a0e27;
+  --sidebar-accent: #06f59c;
+  --sidebar-accent-foreground: #0a0e27;
+  --sidebar-border: #2d3a52;
+  --sidebar-ring: #00d9ff;
+  
+  /* === CHART COLORS === */
+  --chart-1: #00d9ff;
+  --chart-2: #06f59c;
+  --chart-3: #f97316;
+  --chart-4: #3b82f6;
+  --chart-5: #8b5cf6;
+  --chart-6: #ec4899;
+  
+  /* === SEMANTIC SPACING === */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+}
+
+@theme inline {
+  --font-sans: 'Segoe UI', 'Trebuchet MS', 'Arial', sans-serif;
+  --font-mono: 'Consolas', 'Courier New', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at top left, rgba(0, 217, 255, 0.08), transparent 28%),
+      radial-gradient(circle at top right, rgba(6, 245, 156, 0.08), transparent 20%),
+      linear-gradient(180deg, rgba(10, 14, 39, 0.98), rgba(10, 14, 39, 1));
+  }
+}
+
+/* === PREMIUM COMPONENT STYLES === */
+@layer components {
+  /* === CARD HIERARCHY === */
+  .card-base {
+    @apply bg-card border border-border rounded-lg transition-all duration-300;
+  }
+
+  .card-elevated {
+    @apply bg-card border border-border rounded-lg transition-all duration-300 shadow-lg hover:shadow-2xl hover:border-primary/30;
+  }
+
+  .card-glass {
+    @apply bg-card border border-border rounded-lg transition-all duration-300 backdrop-blur-xl border-border/50;
+    background-color: rgba(20, 24, 41, 0.8);
+  }
+
+  .card-minimal {
+    @apply bg-transparent border border-border/40 rounded-lg transition-all duration-300;
+  }
+
+  /* === PREMIUM BUTTONS === */
+  .btn-primary {
+    @apply px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-primary/40 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-secondary/40 active:scale-95;
+  }
+
+  .btn-outline {
+    @apply px-4 py-2 border border-border bg-transparent rounded-lg font-medium transition-all duration-300 hover:bg-card/50 hover:border-primary/50 active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:bg-muted/40 active:scale-95;
+  }
+
+  /* === PREMIUM INPUTS === */
+  .input-base {
+    @apply rounded-lg px-4 py-2 text-foreground placeholder-muted-foreground transition-all duration-300;
+    background-color: var(--input);
+    border: 1px solid var(--input-border);
+  }
+
+  .input-base:focus {
+    @apply outline-none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.15);
+  }
+
+  /* === BADGE & STATUS SYSTEM === */
+  .badge-critical {
+    @apply px-3 py-1 rounded-full text-xs font-semibold border;
+    background-color: rgba(239, 68, 68, 0.15);
+    color: rgb(239, 68, 68);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .badge-high {
+    @apply px-3 py-1 rounded-full text-xs font-semibold border;
+    background-color: rgba(249, 115, 22, 0.15);
+    color: rgb(249, 115, 22);
+    border-color: rgba(249, 115, 22, 0.3);
+  }
+
+  .badge-medium {
+    @apply px-3 py-1 rounded-full text-xs font-semibold border;
+    background-color: rgba(234, 179, 8, 0.15);
+    color: rgb(234, 179, 8);
+    border-color: rgba(234, 179, 8, 0.3);
+  }
+
+  .badge-low {
+    @apply px-3 py-1 rounded-full text-xs font-semibold border;
+    background-color: rgba(34, 197, 94, 0.15);
+    color: rgb(34, 197, 94);
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+
+  .badge-success {
+    @apply px-3 py-1 rounded-full text-xs font-semibold border;
+    background-color: rgba(16, 185, 129, 0.15);
+    color: rgb(16, 185, 129);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  .badge-warning {
+    @apply px-3 py-1 rounded-full text-xs font-semibold border;
+    background-color: rgba(245, 158, 11, 0.15);
+    color: rgb(245, 158, 11);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+
+  .status-indicator {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-running {
+    background-color: rgba(0, 217, 255, 0.15);
+    color: rgb(0, 217, 255);
+    border: 1px solid rgba(0, 217, 255, 0.3);
+  }
+
+  .status-success {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: rgb(16, 185, 129);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .status-error {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: rgb(239, 68, 68);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  /* === TERMINAL & CODE STYLES === */
+  .terminal-panel {
+    @apply bg-black/40 border border-primary/20 rounded-lg p-4 font-mono text-sm text-primary/90 overflow-x-auto backdrop-blur-sm;
+  }
+
+  .terminal-line {
+    @apply flex items-start gap-3 py-1;
+  }
+
+  .terminal-prompt {
+    @apply text-primary/60 select-none flex-shrink-0;
+  }
+
+  /* === ANIMATIONS === */
+  .pulse-active {
+    animation: pulse-active 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .pulse-danger {
+    animation: pulse-danger 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 24px rgba(0, 217, 255, 0.25), inset 0 0 24px rgba(0, 217, 255, 0.05);
+  }
+
+  .glow-secondary {
+    box-shadow: 0 0 24px rgba(6, 245, 156, 0.25), inset 0 0 24px rgba(6, 245, 156, 0.05);
+  }
+
+  .glow-critical {
+    box-shadow: 0 0 24px rgba(239, 68, 68, 0.25), inset 0 0 24px rgba(239, 68, 68, 0.05);
+  }
+
+  .shimmer {
+    animation: shimmer 3s infinite;
+  }
+
+  .fade-in {
+    animation: fade-in 500ms ease-out;
+  }
+
+  .slide-up {
+    animation: slide-up 400ms ease-out cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .slide-down {
+    animation: slide-down 400ms ease-out cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .scale-pop {
+    animation: scale-pop 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* === ACCESSIBILITY === */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  .sr-only {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden bg-clip-padding border-0;
+  }
+
+  .sqli-card {
+    @apply rounded-2xl border border-border/70 bg-card/85 p-6 shadow-lg shadow-black/10 backdrop-blur-xl;
+  }
+
+  .sqli-button-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25;
+  }
+
+  .sqli-button-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/85 hover:shadow-lg hover:shadow-secondary/20;
+  }
+
+  .sqli-input {
+    @apply border-input bg-input/60 rounded-xl border px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px];
+  }
+
+  .sqli-badge-critical {
+    @apply rounded-full border px-3 py-1 text-xs font-semibold;
+    background-color: rgba(239, 68, 68, 0.15);
+    color: rgb(239, 68, 68);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .sqli-badge-high {
+    @apply rounded-full border px-3 py-1 text-xs font-semibold;
+    background-color: rgba(249, 115, 22, 0.15);
+    color: rgb(249, 115, 22);
+    border-color: rgba(249, 115, 22, 0.3);
+  }
+
+  .sqli-badge-medium {
+    @apply rounded-full border px-3 py-1 text-xs font-semibold;
+    background-color: rgba(234, 179, 8, 0.15);
+    color: rgb(234, 179, 8);
+    border-color: rgba(234, 179, 8, 0.3);
+  }
+
+  .sqli-badge-low {
+    @apply rounded-full border px-3 py-1 text-xs font-semibold;
+    background-color: rgba(34, 197, 94, 0.15);
+    color: rgb(34, 197, 94);
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+
+  .sqli-glow {
+    box-shadow: 0 0 24px rgba(0, 217, 255, 0.25), inset 0 0 24px rgba(0, 217, 255, 0.05);
+  }
+
+  .sqli-glow-green {
+    box-shadow: 0 0 24px rgba(6, 245, 156, 0.25), inset 0 0 24px rgba(6, 245, 156, 0.05);
+  }
+}
+
+/* === ANIMATION KEYFRAMES === */
+@layer base {
+  @keyframes pulse-active {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+
+  @keyframes pulse-danger {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    50% {
+      box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scale-pop {
+    0% {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(0, 217, 255, 0.5);
+    }
+  }
+}
+

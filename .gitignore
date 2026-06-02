@@ -1,0 +1,57 @@
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.npmrc
+.snowflake/
+.v0-trash/
+.vercel/
+next.user-config.*
+
+# Environment variables — NEVER commit real secrets!
+.env
+.env.local
+.env*.local
+.env.production
+
+# Next.js build output
+.next/
+out/
+
+# Node
+node_modules/
+.pnpm-store/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# SQLite database (data stays on server)
+backend_v2/data/*.db
+backend_v2/data/*.db-shm
+backend_v2/data/*.db-wal
+backend/data/
+
+# Logs
+*.log
+backend.err.log
+backend.out.log
+dev.err.log
+dev.out.log
+
+# TypeScript build info
+tsconfig.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SSH deploy keys
+.deploy-keys/
+
+# Write test
+.write_test_root.txt

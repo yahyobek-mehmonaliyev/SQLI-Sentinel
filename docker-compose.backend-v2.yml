@@ -1,0 +1,26 @@
+version: '3.9'
+
+services:
+  sqli-backend:
+    build:
+      context: .
+      dockerfile: backend_v2/Dockerfile
+    container_name: sqli-sentinel-backend-v2
+    env_file:
+      - backend_v2/.env.example
+    environment:
+      SQLI_SENTINEL_ENV: production
+      SQLI_SENTINEL_DB_PATH: /app/backend_v2/data/sqli_sentinel.db
+      SQLI_SENTINEL_ALLOWED_ORIGINS: http://localhost:3000
+      SQLI_SENTINEL_SEED_DEFAULT_ADMIN: "false"
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./backend_v2/data:/app/backend_v2/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/api/health")']
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
