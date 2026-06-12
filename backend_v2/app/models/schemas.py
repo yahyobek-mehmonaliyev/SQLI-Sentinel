@@ -121,3 +121,7 @@ class AiPromptOptimizeRequest(BaseModel):
     mode: AssistantMode
     target: str = Field(min_length=3, max_length=255)
     prompt: str = Field(min_length=10, max_length=4000)
+
+
+class DetectRequest(BaseModel):
+    input: str = Field(min_length=1, max_length=5000)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 import logging
 import uuid
 from collections import Counter
@@ -32,6 +33,7 @@ from backend_v2.app.models.schemas import (
     AiPromptOptimizeRequest,
     AiRecommendationRequest,
     ApiKeyCreateRequest,
+    DetectRequest,
     ForgotPasswordRequest,
     LoginRequest,
     PayloadCreateRequest,
@@ -1108,3 +1110,111 @@ def ai_recommendations(payload: AiRecommendationRequest, _current_user: dict[str
                 'monitorItems': monitor_items,
             },
         }
+
+
+# ── SQL Injection Detection ─────────────────────────────────────────────────────
+
+_DETECT_RULES: dict[str, dict[str, Any]] = {
+    'comment_sequence': {
+        'pattern': re.compile(r'(--|#|/\*)'),
+        'weight': 10,
+        'label': 'SQL Comment Sequence',
+        'description': 'SQL comment belgilari topildi (-- , # yoki /*). Bu belgilar qolgan SQL kodini izohga aylantirish uchun ishlatiladi.',
+    },
+    'union_select': {
+        'pattern': re.compile(r'\bunion\b\s+\bselect\b', re.IGNORECASE),
+        'weight': 25,
+        'label': 'UNION SELECT Pattern',
+        'description': 'UNION SELECT pattern aniqlandi. Bu SQL natijalariga qo\'shimcha ma\'lumot qo\'shish uchun ishlatiladi.',
+    },
+    'boolean_tautology': {
+        'pattern': re.compile(r"('\"|\")?\s*(or|and)\s+['\"]?\d+['\"]?\s*=\s*['\"]?\d+['\"]?", re.IGNORECASE),
+        'weight': 22,
+        'label': 'Boolean Tautology',
+        'description': 'Boolean tautologiya aniqlandi (masalan: OR 1=1). Bu autentifikatsiyani chetlab o\'tish uchun ishlatiladi.',
+    },
+    'stacked_query': {
+        'pattern': re.compile(r';\s*(select|insert|update|delete|drop|alter|create)\b', re.IGNORECASE),
+        'weight': 28,
+        'label': 'Stacked Query',
+        'description': 'Stacked query (ko\'p so\'rov) pattern aniqlandi. Bu bitta inputda bir nechta SQL buyruqlarini bajarish uchun ishlatiladi.',
+    },
+    'time_delay': {
+        'pattern': re.compile(r'\b(sleep|pg_sleep|benchmark|waitfor\s+delay)\s*\(', re.IGNORECASE),
+        'weight': 20,
+        'label': 'Time Delay Function',
+        'description': 'Vaqtga asoslangan SQL funksiyalar topildi (SLEEP, BENCHMARK va h.k.). Bu blind SQL injection uchun ishlatiladi.',
+    },
+    'information_schema': {
+        'pattern': re.compile(r'\binformation_schema\b', re.IGNORECASE),
+        'weight': 18,
+        'label': 'Information Schema Access',
+        'description': 'information_schema jadvaliga murojaat aniqlandi. Bu ma\'lumotlar bazasi tuzilmasini o\'rganish uchun ishlatiladi.',
+    },
+    'hex_encoding': {
+        'pattern': re.compile(r'0x[0-9a-fA-F]{2,}'),
+        'weight': 12,
+        'label': 'Hex Encoding',
+        'description': 'Hexadecimal kodlash aniqlandi. Bu WAF (Web Application Firewall) ni chetlab o\'tish uchun ishlatiladi.',
+    },
+}
+
+
+def _severity_label(score: int) -> str:
+    if score >= 85:
+        return 'Critical'
+    if score >= 65:
+        return 'High'
+    if score >= 40:
+        return 'Medium'
+    return 'Low'
+
+
+@app.post('/api/detect')
+def detect_sqli(payload: DetectRequest, _current_user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    """Foydalanuvchi kiritgan matnni SQL injection patternlari uchun tekshiradi."""
+    user_input = payload.input
+    matched_rules: list[dict[str, Any]] = []
+    total_weight = 0
+
+    for rule_name, rule_config in _DETECT_RULES.items():
+        matches = rule_config['pattern'].findall(user_input)
+        if matches:
+            weight = rule_config['weight']
+            total_weight += weight
+            matched_rules.append({
+                'rule': rule_name,
+                'label': rule_config['label'],
+                'description': rule_config['description'],
+                'matchCount': len(matches),
+                'weight': weight,
+            })
+
+    risk_score = min(98, total_weight + len(matched_rules) * 5)
+    detected = risk_score >= 15
+    severity = _severity_label(risk_score)
+
+    if detected:
+        rule_labels = [r['label'] for r in matched_rules]
+        analysis = (
+            f"Kiritilgan matnda {len(matched_rules)} ta SQL injection pattern aniqlandi: "
+            f"{', '.join(rule_labels)}. "
+            f"Umumiy xavf darajasi {severity} ({risk_score} ball) deb baholandi. "
+            'Bu turdagi inputlarni filtrlash va prepared statements ishlatish tavsiya etiladi.'
+        )
+    else:
+        analysis = (
+            'Kiritilgan matnda kuchli SQL injection signali topilmadi. '
+            'Shunga qaramay, barcha foydalanuvchi inputlarini sanitize qilish va parametrli so\'rovlardan foydalanish tavsiya etiladi.'
+        )
+
+    log_event(logger, 'sqli_detection', input_length=len(user_input), detected=detected, risk_score=risk_score, severity=severity)
+
+    return {
+        'detected': detected,
+        'riskScore': risk_score,
+        'severity': severity,
+        'matchedRules': matched_rules,
+        'analysis': analysis,
+        'inputLength': len(user_input),
+    }

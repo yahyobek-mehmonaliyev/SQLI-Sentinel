@@ -171,3 +171,20 @@ export interface AiPromptOptimizationResponseDto {
   optimizedPrompt: string
   improvements: string[]
 }
+
+export interface DetectMatchedRuleDto {
+  rule: string
+  label: string
+  description: string
+  matchCount: number
+  weight: number
+}
+
+export interface DetectResponseDto {
+  detected: boolean
+  riskScore: number
+  severity: 'Low' | 'Medium' | 'High' | 'Critical'
+  matchedRules: DetectMatchedRuleDto[]
+  analysis: string
+  inputLength: number
+}

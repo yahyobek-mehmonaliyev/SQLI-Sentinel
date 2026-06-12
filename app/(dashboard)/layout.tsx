@@ -273,6 +273,7 @@ import {
   Shield,
   Sparkles,
   ChevronRight,
+  SearchCode,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -282,6 +283,7 @@ import { cn } from '@/lib/utils';
 
 const navigationItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'SQL Detector', href: '/detector', icon: SearchCode },
   { label: 'Skaner', href: '/scanner', icon: Crosshair },
   { label: 'Payloadlar', href: '/payloads', icon: Wand2 },
   { label: 'Monitoring', href: '/monitor', icon: Monitor },
