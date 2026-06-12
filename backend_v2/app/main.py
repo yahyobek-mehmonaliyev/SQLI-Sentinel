@@ -4,6 +4,7 @@ import csv
 import io
 import json
 import re
+import urllib.parse
 import logging
 import uuid
 from collections import Counter
@@ -35,6 +36,7 @@ from backend_v2.app.models.schemas import (
     ApiKeyCreateRequest,
     DetectRequest,
     ForgotPasswordRequest,
+    ScanUrlRequest,
     LoginRequest,
     PayloadCreateRequest,
     PayloadUpdateRequest,
@@ -1208,7 +1210,7 @@ def detect_sqli(payload: DetectRequest, _current_user: dict[str, Any] = Depends(
             'Shunga qaramay, barcha foydalanuvchi inputlarini sanitize qilish va parametrli so\'rovlardan foydalanish tavsiya etiladi.'
         )
 
-    log_event(logger, 'sqli_detection', input_length=len(user_input), detected=detected, risk_score=risk_score, severity=severity)
+    log_event(logger, logging.INFO, 'sqli_detection', input_length=len(user_input), detected=detected, risk_score=risk_score, severity=severity)
 
     return {
         'detected': detected,
@@ -1217,4 +1219,156 @@ def detect_sqli(payload: DetectRequest, _current_user: dict[str, Any] = Depends(
         'matchedRules': matched_rules,
         'analysis': analysis,
         'inputLength': len(user_input),
+    }
+
+
+# ── URL-based SQL Injection Scanner ─────────────────────────────────────────────
+
+_URL_RISK_PATHS = {
+    'login': 15, 'auth': 15, 'admin': 12, 'user': 10, 'account': 10,
+    'search': 8, 'api': 6, 'query': 10, 'filter': 8, 'page': 4,
+    'id': 8, 'profile': 8, 'dashboard': 6, 'register': 10, 'signin': 12,
+}
+
+_PARAM_RISK_NAMES = {
+    'id': 12, 'user_id': 15, 'username': 18, 'password': 18, 'email': 14,
+    'login': 16, 'search': 10, 'query': 12, 'q': 10, 'name': 8,
+    'token': 14, 'session': 12, 'redirect': 6, 'url': 6, 'page': 4,
+    'category': 6, 'sort': 4, 'order': 6, 'filter': 8, 'type': 6,
+}
+
+
+def _analyze_url_risk(url: str) -> tuple[int, list[str]]:
+    """URL tuzilmasini tahlil qilib, xavf balini va topilgan signallarni qaytaradi."""
+    parsed = urllib.parse.urlparse(url)
+    path_lower = parsed.path.lower()
+    risk = 0
+    signals: list[str] = []
+
+    for keyword, weight in _URL_RISK_PATHS.items():
+        if keyword in path_lower:
+            risk += weight
+            signals.append(f'URL yo\'lida xavfli kalit so\'z: /{keyword}')
+
+    # Check existing query params in URL
+    query_params = urllib.parse.parse_qs(parsed.query)
+    for param_name in query_params:
+        name_lower = param_name.lower()
+        if name_lower in _PARAM_RISK_NAMES:
+            risk += _PARAM_RISK_NAMES[name_lower]
+            signals.append(f'URL da xavfli parametr topildi: {param_name}')
+
+    return risk, signals
+
+
+@app.post('/api/scan-url')
+def scan_url(payload: ScanUrlRequest, _current_user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    """URL va parametr qiymatini SQL injection uchun to'liq tekshiradi."""
+    import time as _time
+    start = _time.monotonic()
+
+    target_url = payload.target_url.strip()
+    param_name = payload.param_name.strip()
+    param_value = payload.param_value.strip()
+
+    # 1. URL tuzilmasini tahlil qilish
+    url_risk, url_signals = _analyze_url_risk(target_url)
+
+    # 2. Parametr nomini tekshirish
+    param_risk = 0
+    if param_name:
+        name_lower = param_name.lower()
+        if name_lower in _PARAM_RISK_NAMES:
+            param_risk = _PARAM_RISK_NAMES[name_lower]
+            url_signals.append(f'Parametr nomi xavfli: {param_name} (SQL injection uchun tez-tez ishlatiladigan nom)')
+
+    # 3. Parametr qiymatini pattern matching orqali tekshirish
+    value_matched_rules: list[dict[str, Any]] = []
+    value_weight = 0
+    check_input = param_value if param_value else ''
+
+    # Also check URL query string values
+    parsed = urllib.parse.urlparse(target_url)
+    url_query_values = []
+    for vals in urllib.parse.parse_qs(parsed.query).values():
+        url_query_values.extend(vals)
+    if url_query_values:
+        check_input = check_input + ' ' + ' '.join(url_query_values)
+
+    if check_input.strip():
+        for rule_name, rule_config in _DETECT_RULES.items():
+            matches = rule_config['pattern'].findall(check_input)
+            if matches:
+                w = rule_config['weight']
+                value_weight += w
+                value_matched_rules.append({
+                    'rule': rule_name,
+                    'label': rule_config['label'],
+                    'description': rule_config['description'],
+                    'matchCount': len(matches),
+                    'weight': w,
+                })
+
+    # 4. Umumiy risk score
+    total_risk = min(98, url_risk + param_risk + value_weight + len(value_matched_rules) * 5 + len(url_signals) * 3)
+    detected = total_risk >= 15
+    severity = _severity_label(total_risk)
+
+    # 5. Topilgan zaifliklar ro'yxati
+    vulnerabilities: list[dict[str, Any]] = []
+
+    for rule in value_matched_rules:
+        vulnerabilities.append({
+            'type': rule['label'],
+            'severity': severity,
+            'parameter': param_name or 'URL parametrlari',
+            'description': rule['description'],
+            'rule': rule['rule'],
+            'matchCount': rule['matchCount'],
+        })
+
+    # URL-based vulnerabilities
+    if url_risk >= 10:
+        vulnerabilities.append({
+            'type': 'Xavfli URL tuzilmasi',
+            'severity': 'Medium' if url_risk < 20 else 'High',
+            'parameter': 'URL path',
+            'description': f'URL yo\'lida SQL injection uchun xavfli segmentlar topildi. URL tuzilmasi {url_risk} ball xavf hosil qiladi.',
+            'rule': 'url_structure',
+            'matchCount': len([s for s in url_signals if 'yo\'lida' in s]),
+        })
+
+    elapsed_ms = round((_time.monotonic() - start) * 1000, 1)
+
+    # 6. Tahlil matni
+    if detected:
+        vuln_types = list(set(v['type'] for v in vulnerabilities))
+        analysis = (
+            f'{target_url} manzili tekshirildi. '
+            f'{len(vulnerabilities)} ta zaiflik aniqlandi: {", ".join(vuln_types)}. '
+            f'Umumiy xavf darajasi {severity} ({total_risk} ball). '
+            'Bu URL da SQL injection hujumi ehtimoli mavjud. '
+            'Parameterized querylar va input validatsiya ishlatish tavsiya etiladi.'
+        )
+    else:
+        analysis = (
+            f'{target_url} manzili tekshirildi. '
+            'Kuchli SQL injection signali topilmadi. '
+            'Shunga qaramay, barcha inputlarni sanitize qilish va parametrli so\'rovlardan foydalanish tavsiya etiladi.'
+        )
+
+    log_event(logger, logging.INFO, 'url_scan', target=target_url, detected=detected, risk_score=total_risk, severity=severity)
+
+    return {
+        'detected': detected,
+        'riskScore': total_risk,
+        'severity': severity,
+        'vulnerabilities': vulnerabilities,
+        'signals': url_signals,
+        'matchedRules': value_matched_rules,
+        'analysis': analysis,
+        'scanTimeMs': elapsed_ms,
+        'targetUrl': target_url,
+        'paramName': param_name,
+        'paramValue': param_value,
     }

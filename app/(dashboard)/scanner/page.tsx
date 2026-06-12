@@ -1,260 +1,401 @@
 'use client'
 
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Crosshair, Plus, Trash2, Play, Pause, Sparkles, ShieldAlert, Gauge, Radar, Layers3 } from 'lucide-react'
+import {
+  Crosshair,
+  ShieldAlert,
+  ShieldCheck,
+  AlertTriangle,
+  Zap,
+  Loader2,
+  Globe,
+  KeyRound,
+  FileCode,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react'
 import { apiFetch } from '@/lib/api'
-import type { ScanCreateResponseDto, ScanDetailDto, ScanDto, ScanOverviewDto } from '@/lib/api-types'
 
-type RequestMethod = 'GET' | 'POST'
-type PayloadStrategy = 'conservative' | 'balanced' | 'aggressive'
+interface MatchedRule {
+  rule: string
+  label: string
+  description: string
+  matchCount: number
+  weight: number
+}
 
-interface Parameter {
-  key: string
-  value: string
-  method: RequestMethod
+interface Vulnerability {
+  type: string
+  severity: string
+  parameter: string
+  description: string
+  rule: string
+  matchCount: number
+}
+
+interface ScanResult {
+  detected: boolean
+  riskScore: number
+  severity: string
+  vulnerabilities: Vulnerability[]
+  signals: string[]
+  matchedRules: MatchedRule[]
+  analysis: string
+  scanTimeMs: number
+  targetUrl: string
+  paramName: string
+  paramValue: string
+}
+
+const QUICK_PAYLOADS = [
+  { label: "OR 1=1", param: 'id', value: "1' OR 1=1 --", danger: true },
+  { label: "UNION SELECT", param: 'id', value: "' UNION SELECT username, password FROM users --", danger: true },
+  { label: "DROP TABLE", param: 'id', value: "'; DROP TABLE users; --", danger: true },
+  { label: "SLEEP()", param: 'id', value: "' OR SLEEP(5) --", danger: true },
+  { label: "info_schema", param: 'id', value: "' UNION SELECT table_name FROM information_schema.tables --", danger: true },
+  { label: "Hex encoded", param: 'id', value: "admin' AND 0x61646D696E --", danger: true },
+  { label: "Xavfsiz qiymat", param: 'id', value: '3', danger: false },
+  { label: "Murakkab SQLi", param: 'id', value: "1' AND (SELECT COUNT(*) FROM information_schema.tables) > 0; SLEEP(3) --", danger: true },
+]
+
+function getSeverityStyle(severity: string) {
+  switch (severity) {
+    case 'Critical': return { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
+    case 'High': return { color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/30' }
+    case 'Medium': return { color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' }
+    default: return { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/30' }
+  }
+}
+
+function RiskCircle({ score }: { score: number }) {
+  const getColor = () => {
+    if (score >= 85) return '#ef4444'
+    if (score >= 65) return '#f97316'
+    if (score >= 40) return '#eab308'
+    return '#22c55e'
+  }
+  const getRiskLabel = () => {
+    if (score >= 85) return 'KRITIK XAVF'
+    if (score >= 65) return 'YUQORI XAVF'
+    if (score >= 40) return "O'RTA XAVF"
+    if (score >= 15) return 'PAST XAVF'
+    return 'XAVFSIZ'
+  }
+  const circumference = 2 * Math.PI * 42
+  const offset = circumference - (score / 100) * circumference
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative h-28 w-28">
+        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+          <circle
+            cx="50" cy="50" r="42" fill="none"
+            stroke={getColor()} strokeWidth="8" strokeLinecap="round"
+            strokeDasharray={circumference} strokeDashoffset={offset}
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-2xl font-black" style={{ color: getColor() }}>{score}</span>
+        </div>
+      </div>
+      <span className="text-xs font-bold tracking-widest" style={{ color: getColor() }}>
+        {getRiskLabel()}
+      </span>
+    </div>
+  )
+}
+
+function VulnItem({ vuln, index }: { vuln: Vulnerability; index: number }) {
+  const [open, setOpen] = useState(false)
+  const s = getSeverityStyle(vuln.severity)
+
+  return (
+    <div
+      className="rounded-xl border border-destructive/15 bg-destructive/5 p-3 transition-all hover:border-destructive/30"
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${s.bg} ${s.color} ${s.border} border`}>
+            {vuln.severity}
+          </span>
+          <div>
+            <p className="text-sm font-semibold">{vuln.type}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{vuln.parameter} parametri</p>
+          </div>
+        </div>
+        <button onClick={() => setOpen(!open)} className="rounded-md p-1 text-muted-foreground hover:text-foreground">
+          {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+      {open && (
+        <p className="mt-2.5 rounded-lg border border-border/50 bg-black/20 p-2.5 text-xs text-muted-foreground">
+          {vuln.description}
+        </p>
+      )}
+    </div>
+  )
 }
 
 export default function ScannerPage() {
-  const [url, setUrl] = useState('')
-  const [parameters, setParameters] = useState<Parameter[]>([])
-  const [depth, setDepth] = useState(3)
-  const [payloadStrategy, setPayloadStrategy] = useState<PayloadStrategy>('balanced')
-  const [followRedirects, setFollowRedirects] = useState(true)
-  const [useRandomUserAgent, setUseRandomUserAgent] = useState(true)
-  const [isScanning, setIsScanning] = useState(false)
-  const [message, setMessage] = useState('')
-  const [recentScans, setRecentScans] = useState<ScanDto[]>([])
-  const [selectedScan, setSelectedScan] = useState<ScanDto | null>(null)
-  const [scanOverview, setScanOverview] = useState<ScanOverviewDto | null>(null)
-  const [overviewLoading, setOverviewLoading] = useState(false)
+  const [url, setUrl] = useState('https://talim-tahlil.vercel.app/login')
+  const [paramName, setParamName] = useState('id')
+  const [paramValue, setParamValue] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<ScanResult | null>(null)
+  const [error, setError] = useState('')
 
-  const loadScans = async (loadLatest = false) => {
-    const scans = await apiFetch<ScanDto[]>('/scans')
-    setRecentScans(scans)
-    if (loadLatest && scans.length > 0) {
-      await loadScanDetail(scans[0].id)
-    }
-  }
+  const handleScan = useCallback(async (overrideParam?: string, overrideValue?: string) => {
+    const targetUrl = url.trim()
+    if (!targetUrl) { setError('URL kiritilmagan.'); return }
 
-  const loadScanDetail = async (scanId: string) => {
-    setOverviewLoading(true)
+    setLoading(true)
+    setError('')
+    setResult(null)
+
     try {
-      const detail = await apiFetch<ScanDetailDto>(`/scans/${scanId}`)
-      setSelectedScan(detail.scan)
-      setScanOverview(detail.overview)
-    } catch {
-      setSelectedScan(null)
-      setScanOverview(null)
-    } finally {
-      setOverviewLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadScans(true).catch(() => undefined)
-  }, [])
-
-  const addParameter = () => setParameters((current) => [...current, { key: '', value: '', method: 'GET' }])
-  const removeParameter = (index: number) => setParameters((current) => current.filter((_, itemIndex) => itemIndex !== index))
-  const updateParameter = <K extends keyof Parameter>(index: number, field: K, value: Parameter[K]) => {
-    setParameters((current) => current.map((parameter, itemIndex) => (itemIndex === index ? { ...parameter, [field]: value } : parameter)))
-  }
-
-  const handleStartScan = async () => {
-    if (!url.trim()) {
-      setMessage('Iltimos, maqsad URL kiriting.')
-      return
-    }
-    setIsScanning(true)
-    setMessage('')
-    try {
-      const response = await apiFetch<ScanCreateResponseDto>('/scans', {
+      const res = await apiFetch<ScanResult>('/scan-url', {
         method: 'POST',
         body: JSON.stringify({
-          target_url: url,
-          parameters,
-          depth,
-          payload_strategy: payloadStrategy,
-          follow_redirects: followRedirects,
-          use_random_user_agent: useRandomUserAgent,
+          target_url: targetUrl,
+          param_name: overrideParam ?? paramName,
+          param_value: overrideValue ?? paramValue,
         }),
       })
-      setSelectedScan(response.scan)
-      setScanOverview(response.overview)
-      setMessage(
-        `${response.scan.targetUrl} uchun skan yakunlandi. ${response.vulnerabilities} ta signal topildi, umumiy xavf darajasi ${response.overview.riskLevel.toLowerCase()} deb baholandi.`
-      )
-      await loadScans()
-    } catch (requestError) {
-      setMessage(requestError instanceof Error ? requestError.message : 'Skan yaratilmadi.')
+      setResult(res)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Skanerlashda xatolik yuz berdi.")
     } finally {
-      setIsScanning(false)
+      setLoading(false)
     }
+  }, [url, paramName, paramValue])
+
+  const handleQuick = (param: string, value: string) => {
+    setParamName(param)
+    setParamValue(value)
+    handleScan(param, value)
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
-        <div>
-          <h1 className="flex items-center gap-3 text-4xl font-bold"><Crosshair className="h-8 w-8 text-primary" />Maqsad Skaneri</h1>
-          <p className="mt-2 max-w-2xl text-muted-foreground">Target URL va parametrlar asosida non-invasive heuristik backend tahlili ishlaydi.</p>
-        </div>
-        <Card className="sqli-card gap-2 p-4"><p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">AI yo'nalish</p><Link href="/ai-assistant" className="text-lg font-semibold text-primary hover:underline">AI tavsiyani ko'rish</Link></Card>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="flex items-center gap-3 text-3xl font-bold">
+          <Crosshair className="h-7 w-7 text-primary" />
+          URL Skaner
+        </h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Maqsad URL va parametrlarni kiriting — tizim SQL injection zaifliklarini aniqlaydi.
+        </p>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-        <Card className="sqli-card">
-          <div className="space-y-6">
-            <div>
-              <label className="mb-2 block text-sm font-semibold">Maqsad URL</label>
-              <Input value={url} onChange={(event) => setUrl(event.target.value)} className="sqli-input h-11 w-full" placeholder="https://example.com/login" />
+      {/* Main Grid */}
+      <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
+        {/* Left — Form */}
+        <div className="space-y-5">
+          <Card className="sqli-card">
+            <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary/70">
+              <Globe className="h-4 w-4" />
+              Skanerlash sozlamalari
             </div>
 
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <label className="block text-sm font-semibold">Parametrlar</label>
-                <Button onClick={addParameter} variant="outline" size="sm" className="border-border/80 bg-card/60"><Plus className="mr-2 h-4 w-4" />Qo'shish</Button>
+            {/* URL */}
+            <div className="mb-4">
+              <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Maqsad URL</label>
+              <div className="relative">
+                <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="sqli-input w-full pl-9 font-mono text-sm"
+                  placeholder="https://example.com/login"
+                />
               </div>
-              <div className="space-y-3">
-                {parameters.map((parameter, index) => (
-                  <div key={index} className="grid gap-3 rounded-2xl border border-border/70 bg-background/35 p-4 md:grid-cols-[1fr_1fr_110px_44px]">
-                    <Input value={parameter.key} onChange={(event) => updateParameter(index, 'key', event.target.value)} className="sqli-input h-11 w-full" placeholder="Parametr" />
-                    <Input value={parameter.value} onChange={(event) => updateParameter(index, 'value', event.target.value)} className="sqli-input h-11 w-full" placeholder="Qiymat" />
-                    <select value={parameter.method} onChange={(event) => updateParameter(index, 'method', event.target.value as RequestMethod)} className="sqli-input h-11 w-full">
-                      <option value="GET">GET</option>
-                      <option value="POST">POST</option>
-                    </select>
-                    <button onClick={() => removeParameter(index)} className="flex h-11 w-11 items-center justify-center rounded-xl text-destructive transition hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></button>
-                  </div>
+            </div>
+
+            {/* Param Name */}
+            <div className="mb-4">
+              <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Parametr nomi</label>
+              <div className="relative">
+                <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
+                <input
+                  type="text"
+                  value={paramName}
+                  onChange={(e) => setParamName(e.target.value)}
+                  className="sqli-input w-full pl-9 font-mono text-sm"
+                  placeholder="id, username, search..."
+                />
+              </div>
+            </div>
+
+            {/* Param Value */}
+            <div className="mb-5">
+              <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Parametr qiymati</label>
+              <div className="relative">
+                <FileCode className="absolute left-3 top-3 h-4 w-4 text-muted-foreground/50" />
+                <textarea
+                  value={paramValue}
+                  onChange={(e) => setParamValue(e.target.value)}
+                  rows={3}
+                  className="sqli-input w-full resize-none pl-9 font-mono text-sm"
+                  placeholder={"' OR 1=1 --"}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                {error}
+              </div>
+            )}
+
+            {/* Scan Button */}
+            <Button
+              onClick={() => handleScan()}
+              disabled={loading || !url.trim()}
+              className="sqli-button-primary h-11 w-full"
+            >
+              {loading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Skanerlanmoqda...</>
+              ) : (
+                <><Crosshair className="mr-2 h-4 w-4" />Skanerlash</>
+              )}
+            </Button>
+
+            {/* Quick Payloads */}
+            <div className="mt-5 border-t border-border/50 pt-4">
+              <p className="mb-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                Tez test payloadlar
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {QUICK_PAYLOADS.map((p) => (
+                  <button
+                    key={p.value}
+                    onClick={() => handleQuick(p.param, p.value)}
+                    disabled={loading}
+                    className={`rounded-md border px-2.5 py-1 font-mono text-[10px] transition-all hover:-translate-y-0.5 disabled:opacity-50 ${
+                      p.danger
+                        ? 'border-destructive/15 bg-destructive/5 text-red-400 hover:border-destructive/30 hover:bg-destructive/10'
+                        : 'border-green-500/15 bg-green-500/5 text-green-400 hover:border-green-500/30 hover:bg-green-500/10'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
                 ))}
-                {parameters.length === 0 && <div className="rounded-2xl border border-dashed border-border/70 bg-background/30 p-5 text-sm text-muted-foreground">Parametr qo'shilmasa, backend demo parametrlar bilan heuristik tahlil qiladi.</div>}
               </div>
             </div>
+          </Card>
+        </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                <label className="mb-3 flex items-center gap-2 text-sm font-semibold"><Gauge className="h-4 w-4 text-primary" />Skan chuqurligi</label>
-                <input type="range" min="1" max="5" value={depth} onChange={(event) => setDepth(Number(event.target.value))} className="w-full" />
-                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground"><span>Yengil</span><span className="rounded-full bg-primary/10 px-3 py-1 font-semibold text-primary">{depth}</span><span>Chuqur</span></div>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                <label className="mb-3 block text-sm font-semibold">Payload strategiyasi</label>
-                <div className="space-y-2">
-                  {[
-                    { value: 'conservative', label: 'Konservativ' },
-                    { value: 'balanced', label: 'Muvozanatli' },
-                    { value: 'aggressive', label: 'Tajovuzkor' },
-                  ].map((option) => (
-                    <button key={option.value} type="button" onClick={() => setPayloadStrategy(option.value as PayloadStrategy)} className={`w-full rounded-xl border p-3 text-left transition ${payloadStrategy === option.value ? 'border-primary bg-primary/10' : 'border-border/70 bg-card/40 hover:border-primary/40'}`}>
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/35 p-4"><input type="checkbox" checked={followRedirects} onChange={(event) => setFollowRedirects(event.target.checked)} className="h-4 w-4 rounded border-border bg-background" /><span className="text-sm">Redirectlarni kuzatish</span></label>
-              <label className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/35 p-4"><input type="checkbox" checked={useRandomUserAgent} onChange={(event) => setUseRandomUserAgent(event.target.checked)} className="h-4 w-4 rounded border-border bg-background" /><span className="text-sm">Tasodifiy User-Agent</span></label>
-            </div>
-
-            {message && <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-sm text-primary">{message}</div>}
-
-            <div className="flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row">
-              <Button onClick={handleStartScan} disabled={isScanning} className="sqli-button-primary h-11 flex-1">{isScanning ? <><Pause className="mr-2 h-4 w-4" />Skanlanmoqda...</> : <><Play className="mr-2 h-4 w-4" />Skanerlashni boshlash</>}</Button>
-              <Button asChild variant="outline" className="h-11 border-border/80 bg-card/60 sm:min-w-52"><Link href="/ai-assistant"><Sparkles className="mr-2 h-4 w-4" />AI tavsiyani ko'rish</Link></Button>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="sqli-card">
-          <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-destructive/10"><ShieldAlert className="h-5 w-5 text-destructive" /></div><div><h3 className="font-semibold">Eslatma</h3><p className="text-sm text-muted-foreground">Bu backend tashqi targetga hujum qilmaydi, faqat xavfsiz heuristik tahlil qiladi.</p></div></div>
-
-          <div className="mt-6 border-t border-border/70 pt-6">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Radar className="h-4 w-4 text-primary" />Matnli skan natijasi</div>
-            {overviewLoading ? (
-              <p className="mt-3 text-sm text-muted-foreground">Natija yuklanmoqda...</p>
-            ) : scanOverview && selectedScan ? (
-              <div className="mt-4 space-y-4">
-                <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-primary/70">Natija sharhi</p>
-                  <h4 className="mt-2 font-semibold text-primary">{selectedScan.targetUrl}</h4>
-                  <p className="mt-2 text-sm text-muted-foreground">{scanOverview.narrative}</p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Xavf darajasi</p>
-                    <p className="mt-2 text-xl font-semibold text-destructive">{scanOverview.riskLevel}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">O'rtacha risk ball: {scanOverview.riskScore}</p>
-                  </div>
-                  <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Ishonch va signal</p>
-                    <p className="mt-2 text-xl font-semibold text-secondary">{scanOverview.confidence}%</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{scanOverview.detectedSignals} ta signal, {scanOverview.averageResponseTime} ms</p>
+        {/* Right — Results */}
+        <div className="space-y-5">
+          {result ? (
+            <>
+              {/* Status + Risk */}
+              <Card className={`sqli-card border ${result.detected ? 'border-destructive/25' : 'border-green-500/25'}`}>
+                <div className="flex items-center gap-6">
+                  <RiskCircle score={result.riskScore} />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2.5">
+                      {result.detected ? (
+                        <ShieldAlert className="h-5 w-5 text-destructive" />
+                      ) : (
+                        <ShieldCheck className="h-5 w-5 text-green-500" />
+                      )}
+                      <h3 className={`text-lg font-bold ${result.detected ? 'text-destructive' : 'text-green-500'}`}>
+                        {result.detected ? 'SQL Injection aniqlandi!' : 'Xavfsiz'}
+                      </h3>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {result.vulnerabilities.length} ta zaiflik
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {result.scanTimeMs}ms
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Zap className="h-3 w-3" />
+                        {result.matchedRules.length} pattern
+                      </span>
+                    </div>
+                    {/* Risk bar */}
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${result.riskScore}%`,
+                          background: result.riskScore >= 85 ? '#ef4444' : result.riskScore >= 65 ? '#f97316' : result.riskScore >= 40 ? '#eab308' : '#22c55e',
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
+              </Card>
 
-                <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold"><Layers3 className="h-4 w-4 text-primary" />Kategoriyalar va severity</div>
-                  <div className="flex flex-wrap gap-2">
-                    {scanOverview.categories.length > 0 ? scanOverview.categories.map((category) => (
-                      <span key={category.name} className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs text-primary">{category.name}: {category.count}</span>
-                    )) : <span className="text-sm text-muted-foreground">Aniq category signal qaytmadi.</span>}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {scanOverview.severityBreakdown.map((item) => (
-                      <span key={item.name} className="rounded-full border border-border/70 bg-card/50 px-3 py-1 text-xs text-muted-foreground">{item.name}: {item.count}</span>
+              {/* Analysis */}
+              <Card className="sqli-card">
+                <h3 className="mb-2.5 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+                  Tahlil natijasi
+                </h3>
+                <p className="rounded-xl border border-primary/15 bg-primary/5 p-3.5 text-sm leading-relaxed text-muted-foreground">
+                  {result.analysis}
+                </p>
+              </Card>
+
+              {/* Signals */}
+              {result.signals.length > 0 && (
+                <Card className="sqli-card">
+                  <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+                    <Globe className="h-3.5 w-3.5" />
+                    URL signallari ({result.signals.length})
+                  </h3>
+                  <div className="space-y-1.5">
+                    {result.signals.map((sig, i) => (
+                      <div key={i} className="flex items-start gap-2 rounded-lg bg-yellow-500/5 p-2.5 text-xs text-yellow-400/80">
+                        <AlertTriangle className="mt-0.5 h-3 w-3 flex-shrink-0" />
+                        {sig}
+                      </div>
                     ))}
                   </div>
-                </div>
+                </Card>
+              )}
 
-                <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                  <p className="text-sm font-semibold">Ustuvor findinglar</p>
-                  <div className="mt-3 space-y-3">
-                    {scanOverview.topFindings.length > 0 ? scanOverview.topFindings.map((finding) => (
-                      <div key={finding.id} className="rounded-xl border border-border/70 bg-black/20 p-3">
-                        <div className="flex items-center justify-between gap-3 text-sm">
-                          <span className="font-medium text-primary">{finding.parameter}</span>
-                          <span className="text-destructive">{finding.severity} / {finding.riskScore}</span>
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">Turi: {finding.payloadType}</p>
-                        <p className="mt-2 text-xs text-muted-foreground">{finding.evidence}</p>
-                      </div>
-                    )) : <p className="text-sm text-muted-foreground">Top finding mavjud emas.</p>}
+              {/* Vulnerabilities */}
+              {result.vulnerabilities.length > 0 && (
+                <Card className="sqli-card">
+                  <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-destructive/70">
+                    <ShieldAlert className="h-3.5 w-3.5" />
+                    Topilgan zaifliklar ({result.vulnerabilities.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {result.vulnerabilities.map((vuln, i) => (
+                      <VulnItem key={`${vuln.rule}-${i}`} vuln={vuln} index={i} />
+                    ))}
                   </div>
+                </Card>
+              )}
+            </>
+          ) : (
+            <Card className="sqli-card">
+              <div className="flex flex-col items-center py-16 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+                  <Crosshair className="h-8 w-8 text-primary/50" />
                 </div>
-
-                <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                  <p className="text-sm font-semibold">Muhim jihatlar</p>
-                  <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-                    {scanOverview.importantNotes.map((note) => <p key={note}>{note}</p>)}
-                    {scanOverview.parameterSummary.length > 0 && <p>Ko'rib chiqilgan parametrlar: {scanOverview.parameterSummary.join(', ')}.</p>}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Skanerlashni boshlagach natija shu bo'limda kategoriya, xavf darajasi, turi va muhim izohlar bilan matnli ko'rinishda chiqadi.</p>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      <div>
-        <h2 className="mb-4 text-2xl font-bold">So'nggi skanlar</h2>
-        <div className="space-y-3">
-          {recentScans.map((scan) => (
-            <Card key={scan.id} className="sqli-card cursor-pointer transition hover:border-primary/40" onClick={() => loadScanDetail(scan.id)}>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex-1"><h4 className="font-semibold text-primary">{scan.targetUrl}</h4><div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground"><span>Status: {scan.status}</span><span>{scan.vulnerabilitiesFound} ta finding</span><span>{scan.requestsTotal} ta request</span></div></div>
-                <div className="text-left lg:text-right"><p className="text-2xl font-semibold text-secondary">{scan.successRate}%</p><p className="text-xs text-muted-foreground">{scan.duration} min</p></div>
+                <h3 className="font-semibold">Natija kutilmoqda</h3>
+                <p className="mt-1.5 max-w-xs text-sm text-muted-foreground">
+                  URL va parametrlarni kiritib &quot;Skanerlash&quot; tugmasini bosing yoki tez test payloadlardan birini tanlang.
+                </p>
               </div>
             </Card>
-          ))}
+          )}
         </div>
       </div>
     </div>

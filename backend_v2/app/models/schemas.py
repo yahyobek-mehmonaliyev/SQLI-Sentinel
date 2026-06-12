@@ -125,3 +125,10 @@ class AiPromptOptimizeRequest(BaseModel):
 
 class DetectRequest(BaseModel):
     input: str = Field(min_length=1, max_length=5000)
+
+
+class ScanUrlRequest(BaseModel):
+    target_url: str = Field(min_length=5, max_length=2000)
+    param_name: str = Field(default='', max_length=128)
+    param_value: str = Field(default='', max_length=2000)
+
